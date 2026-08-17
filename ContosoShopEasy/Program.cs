@@ -77,16 +77,16 @@ namespace ContosoShopEasy
 
         static void DemonstrateProductSearch()
         {
-            // Vulnerable search - demonstrates SQL injection risk
-            string[] searchTerms = { "laptop", "phone", "'; DROP TABLE Products; --", "headphones" };
-            
+            // Safe search terms for normal product browsing and validation checks.
+            string[] searchTerms = { "laptop", "phone", "headphones", "tablet" };
+
             foreach (string searchTerm in searchTerms)
             {
                 Console.WriteLine($"Searching for: '{searchTerm}'");
                 var results = _productService.SearchProducts(searchTerm);
                 Console.WriteLine($"Found {results.Count} products");
-                
-                if (results.Count > 0 && !searchTerm.Contains("DROP"))
+
+                if (results.Count > 0)
                 {
                     var firstResult = results.First();
                     Console.WriteLine($"  -> {firstResult.Name} - ${firstResult.Price} ({firstResult.Brand})");
@@ -214,15 +214,19 @@ namespace ContosoShopEasy
                 
                 if (isValidCard)
                 {
-                    bool success = _paymentService.ProcessPayment(
+                    var paymentResult = _paymentService.ProcessPayment(
                         payment.CardNumber,
                         payment.CardHolder,
                         payment.Expiry,
                         payment.CVV,
                         payment.Amount
                     );
-                    
-                    Console.WriteLine(success ? "Payment successful!" : "Payment failed!");
+
+                    Console.WriteLine(paymentResult.IsSuccessful ? "Payment successful!" : "Payment failed!");
+                    if (!string.IsNullOrWhiteSpace(paymentResult.Message))
+                    {
+                        Console.WriteLine($"Payment status: {paymentResult.Message}");
+                    }
                 }
                 else
                 {

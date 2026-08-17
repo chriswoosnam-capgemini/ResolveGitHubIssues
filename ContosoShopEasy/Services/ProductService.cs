@@ -27,18 +27,74 @@ namespace ContosoShopEasy.Services
             return _productRepository.GetProductsByCategory(categoryId);
         }
 
-        // Vulnerable search method - SQL injection risk
+        /// <summary>
+        /// Searches for products by name, description, or brand.
+        /// Uses parameterized queries through LINQ to prevent SQL injection.
+        /// </summary>
+        /// <param name="searchTerm">The search term (validated and sanitized)</param>
+        /// <returns>List of matching active products</returns>
         public List<Product> SearchProducts(string searchTerm)
         {
-            // This simulates a SQL injection vulnerability by directly using user input
-            // In the education context, this would be flagged as a security issue
-            Console.WriteLine($"[DEBUG] Executing search query with term: '{searchTerm}'");
+            // Input validation and sanitization
+            if (string.IsNullOrWhiteSpace(searchTerm))
+            {
+                return new List<Product>();
+            }
+
+            // Sanitize input: trim whitespace and limit length
+            searchTerm = searchTerm.Trim();
+            if (searchTerm.Length > 100)
+            {
+                searchTerm = searchTerm.Substring(0, 100);
+            }
+
+            // Remove potentially dangerous characters (optional defense-in-depth)
+            // Only allow alphanumeric, spaces, and common punctuation
+            if (!IsValidSearchInput(searchTerm))
+            {
+                Console.WriteLine($"[SECURITY] Invalid search term rejected: potentially malicious input detected");
+                return new List<Product>();
+            }
+
+            // Log sanitized search for audit purposes (no SQL query exposed)
+            Console.WriteLine($"[AUDIT] Product search performed with term: '{searchTerm}'");
             
-            // Simulate SQL injection vulnerability by logging dangerous query
-            string simulatedQuery = $"SELECT * FROM Products WHERE Name LIKE '%{searchTerm}%' OR Description LIKE '%{searchTerm}%'";
-            Console.WriteLine($"[DEBUG] SQL Query: {simulatedQuery}");
-            
+            // Delegate to repository - uses LINQ which is inherently SQL injection safe
+            // LINQ parameterizes queries automatically
             return _productRepository.SearchProducts(searchTerm);
+        }
+
+        /// <summary>
+        /// Validates search input to detect potentially malicious patterns
+        /// </summary>
+        private bool IsValidSearchInput(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return false;
+
+            // Reject inputs containing SQL keywords or special characters
+            string[] sqlKeywords = { "SELECT", "DROP", "INSERT", "UPDATE", "DELETE", "UNION", "ORDER BY", "--", "/*", "*/", "xp_", "sp_" };
+            string lowerInput = input.ToLower();
+
+            foreach (var keyword in sqlKeywords)
+            {
+                if (lowerInput.Contains(keyword.ToLower()))
+                {
+                    return false;
+                }
+            }
+
+            // Allow alphanumeric, spaces, and common punctuation
+            foreach (char c in input)
+            {
+                if (!char.IsLetterOrDigit(c) && !char.IsWhiteSpace(c) && !"-._&".Contains(c))
+                {
+                    // Potentially suspicious character
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public List<Product> GetTopRatedProducts(int count = 10)

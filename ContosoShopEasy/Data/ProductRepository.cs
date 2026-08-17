@@ -114,12 +114,23 @@ namespace ContosoShopEasy.Data
             return _products.Where(p => p.CategoryId == categoryId && p.IsActive).ToList();
         }
 
+        /// <summary>
+        /// Searches for products by name, description, or brand.
+        /// Uses LINQ queries which are inherently safe from SQL injection.
+        /// </summary>
+        /// <param name="searchTerm">The search term to find in product data</param>
+        /// <returns>List of matching active products</returns>
         public List<Product> SearchProducts(string searchTerm)
         {
+            // Input validation: Empty or null check
             if (string.IsNullOrEmpty(searchTerm))
                 return new List<Product>();
 
-            searchTerm = searchTerm.ToLower();
+            // Normalize input: trim whitespace and convert to lowercase
+            searchTerm = searchTerm.Trim().ToLower();
+
+            // Security note: LINQ queries are parameterized internally and safe from SQL injection
+            // The .Contains() method treats user input as literal text, not executable code
             return _products.Where(p => p.IsActive &&
                 (p.Name.ToLower().Contains(searchTerm) ||
                  p.Description.ToLower().Contains(searchTerm) ||
